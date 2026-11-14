@@ -18,7 +18,7 @@ Keepr is a full-stack SaaS platform designed for individuals, roommates, couples
 8. [Automated Testing Suite](#automated-testing-suite)
 9. [Local Development Setup](#local-development-setup)
 10. [Docker Compose Deployment](#docker-compose-deployment)
-11. [100% Free Production Deployment Guide](#100-free-production-deployment-guide)
+11. [Production Cloud Deployment Guide](#production-cloud-deployment-guide)
 12. [API Reference & Swagger](#api-reference--swagger)
 13. [Demo Credentials](#demo-credentials)
 
@@ -427,73 +427,69 @@ docker compose down
 
 ---
 
-## 100% Free Production Deployment Guide
+## Production Cloud Deployment Guide
 
-You can deploy Keepr to production at **zero cost** using modern free cloud tiers.
+Keepr is built for straightforward deployment across modern cloud infrastructure and managed services.
 
-### Recommended Free Architecture
+### Cloud Architecture
 
-| Service Component | Free Cloud Provider | Free Tier Specification |
+| Service Component | Recommended Cloud Provider | Deployment Model |
 |---|---|---|
-| **Frontend SPA** | **Vercel** or **Cloudflare Pages** | Unlimited static hosting, free SSL, custom domains |
-| **Backend API & Jobs** | **Render** or **Fly.io** | 750 free instance hours/month |
-| **PostgreSQL Database** | **Neon** or **Render Postgres** | 0.5 GB free serverless Postgres |
-| **Redis & Queue** | **Upstash** | 10,000 commands/day free with TLS |
-| **Document Vault** | **Cloudflare R2** | 10 GB free object storage forever (no egress fees) |
-| **Transactional Email** | **Resend** or **Brevo** | 3,000 free emails/month |
+| **Frontend SPA** | **Vercel** or **Cloudflare Pages** | Static SPA CDN with global edge caching & SSL |
+| **Backend API & Workers** | **Render**, **Fly.io**, or **Railway** | Containerized Node.js service with auto-healing |
+| **PostgreSQL Database** | **Neon**, **Supabase**, or **AWS RDS** | Managed PostgreSQL 15+ with SSL pooling |
+| **Redis & Queue** | **Upstash** or **Redis Cloud** | Managed Redis 7+ with TLS connection strings |
+| **Document Vault** | **Cloudflare R2** or **AWS S3** | S3-compatible private bucket storage |
+| **Transactional Email** | **Resend**, **Brevo**, or **SendGrid** | SMTP or API-driven transactional dispatch |
 
 ---
 
-### Step-by-Step Free Deployment
+### Step-by-Step Production Deployment
 
-#### 1. Set Up Free PostgreSQL (Neon.tech)
-1. Sign up at [neon.tech](https://neon.tech) (no credit card required).
-2. Create a new project named `keepr-prod`.
-3. Copy your pooled connection string:
+#### 1. Provision Managed PostgreSQL
+1. Create a managed PostgreSQL database (e.g. on [Neon](https://neon.tech), [Supabase](https://supabase.com), or [Render Postgres](https://render.com)).
+2. Retrieve the pooled connection string:
    ```
-   postgresql://keepr_user:password@ep-xyz.us-east-2.aws.neon.tech/keepr?sslmode=require
+   postgresql://keepr_user:password@ep-xyz.region.neon.tech/keepr?sslmode=require
    ```
 
-#### 2. Set Up Free Redis (Upstash.com)
-1. Sign up at [upstash.com](https://upstash.com).
-2. Create a Serverless Redis database in the same region as your database.
-3. Copy the TLS connection URL (`rediss://...`):
+#### 2. Provision Managed Redis
+1. Create a managed Redis database (e.g. on [Upstash](https://upstash.com) or [Redis Cloud](https://redis.com)).
+2. Retrieve the TLS connection URL:
    ```
    rediss://default:password@xyz.upstash.io:6379
    ```
 
-#### 3. Deploy Backend to Render (Free Web Service)
-1. Sign up at [render.com](https://render.com).
-2. Click **New +** -> **Web Service** and connect your GitHub repository.
-3. Set configuration:
+#### 3. Deploy Backend API Service
+1. Connect your GitHub repository to your cloud application host (e.g. [Render](https://render.com), [Fly.io](https://fly.io), or [Railway](https://railway.app)).
+2. Configure the build & run parameters:
    - **Root Directory**: `backend`
    - **Environment**: `Node`
    - **Build Command**: `npm ci && npx prisma generate && npm run build`
    - **Start Command**: `npx prisma db push && node dist/server.js`
-4. Add Environment Variables:
+3. Configure the environment variables:
    - `NODE_ENV`: `production`
    - `PORT`: `5001`
-   - `DATABASE_URL`: *(Your Neon connection string)*
-   - `REDIS_URL`: *(Your Upstash connection string)*
-   - `JWT_SECRET`: *(Run `openssl rand -hex 32` locally and paste)*
-   - `STORAGE_SIGNING_SECRET`: *(Run `openssl rand -hex 32` locally and paste)*
-   - `STORAGE_DRIVER`: `local` (or `s3` for Cloudflare R2)
-   - `CORS_ORIGIN`: `https://keepr.vercel.app`
-   - `APP_URL`: `https://keepr.vercel.app`
-   - `EMAIL_PROVIDER`: `mock` (or `smtp` with Resend credentials)
-5. Click **Create Web Service**. Your backend will be available at `https://keepr-backend.onrender.com`.
+   - `DATABASE_URL`: *(Your PostgreSQL connection string)*
+   - `REDIS_URL`: *(Your Redis connection string)*
+   - `JWT_SECRET`: *(A secure random 32+ character string)*
+   - `STORAGE_SIGNING_SECRET`: *(A secure random 32+ character string)*
+   - `STORAGE_DRIVER`: `local` (or `s3` with Cloudflare R2 / AWS S3)
+   - `CORS_ORIGIN`: `https://your-frontend-domain.com`
+   - `APP_URL`: `https://your-frontend-domain.com`
+   - `EMAIL_PROVIDER`: `mock` (or `smtp` with your email service credentials)
+4. Trigger the deployment.
 
-#### 4. Deploy Frontend to Vercel (Free)
-1. Sign up at [vercel.com](https://vercel.com).
-2. Click **Add New** -> **Project** and select your repository.
-3. Set configuration:
+#### 4. Deploy Frontend SPA
+1. Connect your repository to your frontend hosting provider (e.g. [Vercel](https://vercel.com) or [Cloudflare Pages](https://pages.cloudflare.com)).
+2. Configure project settings:
    - **Framework Preset**: `Vite`
    - **Root Directory**: `frontend`
    - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
-4. Add Environment Variable:
-   - `VITE_API_BASE_URL`: `https://keepr-backend.onrender.com`
-5. Click **Deploy**. Your frontend is live with automatic SSL!
+3. Configure the environment variable:
+   - `VITE_API_BASE_URL`: *(Your backend API URL, e.g. `https://api.yourdomain.com`)*
+4. Deploy to generate your production URL.
 
 ---
 
