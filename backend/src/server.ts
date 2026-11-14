@@ -3,6 +3,7 @@ import { env } from './config/env';
 import { connectDB, disconnectDB } from './config/db';
 import { redis } from './config/redis';
 import { logger } from './utils/logger';
+import { checkAndAutoSeed } from './config/autoSeed';
 import { startNotificationWorker, stopNotificationWorker } from './jobs/notificationQueue';
 import { runReminderCheck } from './jobs/reminderScheduler';
 
@@ -13,6 +14,9 @@ async function bootstrap() {
     // 1. Connect to Database
     await connectDB();
     logger.info('✅ PostgreSQL Database connected successfully');
+
+    // 1.1 Auto-seed demo data if fresh empty database
+    await checkAndAutoSeed();
 
     // 2. Start Background Worker
     try {

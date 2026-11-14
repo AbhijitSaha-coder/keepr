@@ -35,8 +35,10 @@ services:
         value: mock
       - key: CORS_ORIGIN
         value: "*"
+      - key: FRONTEND_URL
+        value: https://keepr-frontend.onrender.com
       - key: APP_URL
-        value: "http://localhost:5173"
+        value: https://keepr-frontend.onrender.com
 
   # Frontend Web Application (React SPA)
   - type: web

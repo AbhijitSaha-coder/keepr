@@ -28,12 +28,19 @@ import { activityRoutes } from './modules/activity/activity.routes';
 
 const app = express();
 
+// Trust reverse proxy (Render / load balancers)
+app.set('trust proxy', 1);
+
 // Security & Optimization Middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 app.use(cors({
-  origin: env.NODE_ENV === 'development' ? true : env.FRONTEND_URL,
+  origin: true,
+  credentials: true
+}));
+app.options('*', cors({
+  origin: true,
   credentials: true
 }));
 app.use(cookieParser());
