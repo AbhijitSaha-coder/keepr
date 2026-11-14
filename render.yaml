@@ -6,11 +6,13 @@ services:
     rootDir: backend
     plan: free
     region: oregon
-    buildCommand: npm ci && npx prisma generate && npm run build
+    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
     startCommand: npx prisma db push && node dist/server.js
     envVars:
       - key: NODE_VERSION
         value: 22
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
       - key: NODE_ENV
         value: production
       - key: PORT
