@@ -54,7 +54,7 @@ services:
         destination: /index.html
 
 databases:
-  # Managed PostgreSQL Database (Free Tier)
+  # Managed PostgreSQL Database
   - name: keepr-postgres
     plan: free
     region: oregon

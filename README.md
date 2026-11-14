@@ -6,21 +6,74 @@ Keepr is a full-stack SaaS platform designed for individuals, roommates, couples
 
 ---
 
+## 🌐 Live Production Deployment
+
+| Service | Component | Production URL | Status |
+|---|---|---|---|
+| **Web Application** | React 18 SPA (Frontend) | [https://keepr-frontend.onrender.com](https://keepr-frontend.onrender.com) | 🟢 Live |
+| **Backend API** | Express / Node.js 22 LTS | [https://keepr-backend-z3xx.onrender.com](https://keepr-backend-z3xx.onrender.com) | 🟢 Live |
+| **API Documentation** | Interactive Swagger UI | [https://keepr-backend-z3xx.onrender.com/api-docs/](https://keepr-backend-z3xx.onrender.com/api-docs/) | 🟢 Live |
+| **Health Check** | API System Health | [https://keepr-backend-z3xx.onrender.com/api/health](https://keepr-backend-z3xx.onrender.com/api/health) | 🟢 Healthy |
+| **Database** | Managed PostgreSQL | `keepr-postgres` (Render Cloud) | 🟢 Available |
+| **GitHub Repository** | Source Code & CI/CD | [https://github.com/AbhijitSaha-coder/keepr](https://github.com/AbhijitSaha-coder/keepr) | 🟢 Active |
+| **Frontend Service** | Render Static Console | [https://dashboard.render.com/static/srv-dbs5g2brjlhs73d7fhr0](https://dashboard.render.com/static/srv-dbs5g2brjlhs73d7fhr0) | 🟢 Deployed |
+
+> **Demo Access**: You can test the platform instantly by clicking **"One-Click Demo Sign In"** on the login page or using `demo@keepr.app` / `Password123!`.
+
+---
+
+## What Was Built & Accomplished
+
+Keepr was developed, tested, and deployed end-to-end as a production-grade multi-tenant operations platform:
+
+1. **Complete Full-Stack Architecture**:
+   - Modern React 18 single-page application with Vite, TypeScript, Tailwind CSS, Lucide icons, and Recharts analytics.
+   - Robust Express.js backend with TypeScript, structured into modular controllers, services, middlewares, and Prisma ORM.
+   - Relational database schema with 13 models, foreign keys, indexes, and full cascade integrity on PostgreSQL.
+
+2. **10 Production-Grade Feature Modules**:
+   - **Auth & Session Management**: Secure registration, bcrypt password hashing (12 rounds), JWT access tokens, multi-device session tracking, and password reset flows.
+   - **Multi-Tenant Workspaces**: Complete workspace isolation with Role-Based Access Control (`OWNER`, `ADMIN`, `MEMBER`), invitations, and audit tracking.
+   - **Bills & Recurring Payments**: Tracking, payment recording, auto-calculating next due dates with leap-year and month-end safe calendar arithmetic, and payment histories.
+   - **Subscription Lifecycle & MRR**: Active, paused, and cancelled subscription tracking with auto-computed Monthly Recurring and Annual Recurring totals.
+   - **Private Document Vault**: Local and S3-compatible document storage protected behind time-limited HMAC-SHA256 signed download tokens.
+   - **Household Inventory & Warranties**: Asset cataloging with serial numbers, location tracking, and warranty expiration alerts.
+   - **Kanban Tasks & Chores**: Task board with drag/status updates (`TODO`, `IN_PROGRESS`, `DONE`), assignees, priorities, and threaded comments.
+   - **Spending Analytics**: Real-time SQL-aggregated spending metrics, category breakdown charts, monthly trend visualizations, and per-member distribution.
+   - **Notifications & Reminders**: Multi-channel notification preferences, scheduled bill/warranty reminders, and in-app alerts.
+   - **Activity Audit Trail**: Immutable log recording every critical workspace event with timestamps, actor attribution, and metadata.
+
+3. **High-Reliability Background Processing**:
+   - Redis and BullMQ distributed queues for scheduled job execution.
+   - Built-in graceful offline fallback: when running without an external Redis instance, notifications and reminders automatically write directly to PostgreSQL without dropping tasks or crashing.
+
+4. **Comprehensive Automated Testing Suite**:
+   - **43 automated tests passing** (39 backend integration tests across 10 test suites + 4 frontend component tests across 2 suites).
+   - Tests verify authentication, workspace RBAC, bills recurrence, subscriptions, inventory, task workflows, analytics calculations, and frontend rendering.
+
+5. **Production Cloud Deployment & CI/CD**:
+   - GitHub Actions CI pipeline executing linting, TypeScript compilation, and automated test suites on every push.
+   - Automated cloud deployment using Render Blueprint (`render.yaml`) managing PostgreSQL, Express backend API, and React SPA static site with global edge caching.
+
+---
+
 ## Table of Contents
 
-1. [Executive Summary](#executive-summary)
-2. [Technology Stack](#technology-stack)
-3. [System Architecture](#system-architecture)
-4. [Database Design & ER Diagram](#database-design--er-diagram)
-5. [Feature Modules (A through J)](#feature-modules)
-6. [Security & Multi-Tenant Isolation](#security--multi-tenant-isolation)
-7. [Recurrence Engine & Background Jobs](#recurrence-engine--background-jobs)
-8. [Automated Testing Suite](#automated-testing-suite)
-9. [Local Development Setup](#local-development-setup)
-10. [Docker Compose Deployment](#docker-compose-deployment)
-11. [Production Cloud Deployment Guide](#production-cloud-deployment-guide)
-12. [API Reference & Swagger](#api-reference--swagger)
-13. [Demo Credentials](#demo-credentials)
+1. [Live Production Deployment](#-live-production-deployment)
+2. [What Was Built & Accomplished](#what-was-built--accomplished)
+3. [Executive Summary](#executive-summary)
+4. [Technology Stack](#technology-stack)
+5. [System Architecture](#system-architecture)
+6. [Database Design & ER Diagram](#database-design--er-diagram)
+7. [Feature Modules (A through J)](#feature-modules)
+8. [Security & Multi-Tenant Isolation](#security--multi-tenant-isolation)
+9. [Recurrence Engine & Background Jobs](#recurrence-engine--background-jobs)
+10. [Automated Testing Suite](#automated-testing-suite)
+11. [Local Development Setup](#local-development-setup)
+12. [Docker Compose Deployment](#docker-compose-deployment)
+13. [Production Cloud Deployment Guide](#production-cloud-deployment-guide)
+14. [API Reference & Swagger](#api-reference--swagger)
+15. [Demo Credentials](#demo-credentials)
 
 ---
 
@@ -496,8 +549,8 @@ Keepr is built for straightforward deployment across modern cloud infrastructure
 ## API Reference & Swagger
 
 Keepr provides an interactive Swagger UI for API exploration.
-When running locally, visit:
-**[http://localhost:5001/api-docs](http://localhost:5001/api-docs)**
+- **Production Swagger UI**: **[https://keepr-backend-z3xx.onrender.com/api-docs/](https://keepr-backend-z3xx.onrender.com/api-docs/)**
+- **Local Development**: **[http://localhost:5001/api-docs](http://localhost:5001/api-docs)**
 
 ### Key Endpoint Groups
 
