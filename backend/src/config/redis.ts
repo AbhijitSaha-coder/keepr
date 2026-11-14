@@ -4,10 +4,13 @@ import { env } from './env';
 export const redis = new Redis(env.REDIS_URL, {
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
+  enableOfflineQueue: false,
   lazyConnect: env.NODE_ENV === 'test',
+  connectTimeout: 2000,
   retryStrategy(times) {
-    if (env.NODE_ENV === 'test') return null; // do not reconnect indefinitely in tests
-    return Math.min(times * 100, 3000);
+    if (env.NODE_ENV === 'test') return null;
+    if (times > 5) return null;
+    return Math.min(times * 200, 1000);
   }
 });
 

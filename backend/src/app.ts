@@ -60,12 +60,17 @@ app.get(['/health', '/api/health'], async (_req: Request, res: Response) => {
   }
 
   try {
-    await redis.ping();
+    if (redis.status === 'ready') {
+      await redis.ping();
+      redisStatus = 'healthy';
+    } else {
+      redisStatus = 'offline';
+    }
   } catch (err) {
-    redisStatus = 'unhealthy';
+    redisStatus = 'offline';
   }
 
-  const isHealthy = dbStatus === 'healthy' && redisStatus === 'healthy';
+  const isHealthy = dbStatus === 'healthy';
 
   res.status(isHealthy ? 200 : 503).json({
     status: isHealthy ? 'pass' : 'fail',
