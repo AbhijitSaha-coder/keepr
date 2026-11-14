@@ -1,0 +1,538 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkspaceType {
+  PERSONAL
+  HOUSEHOLD
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum BillCategory {
+  RENT
+  ELECTRICITY
+  WATER
+  INTERNET
+  PHONE
+  INSURANCE
+  MAINTENANCE
+  GROCERIES
+  OTHER
+}
+
+enum BillRecurrence {
+  ONE_TIME
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  CUSTOM
+}
+
+enum BillStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+enum SubscriptionCycle {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  WEEKLY
+}
+
+enum DocumentCategory {
+  BILL
+  RECEIPT
+  RENTAL_AGREEMENT
+  WARRANTY
+  INSURANCE
+  HOUSEHOLD_RECORD
+  OTHER
+}
+
+enum InventoryCategory {
+  ELECTRONICS
+  APPLIANCES
+  FURNITURE
+  VEHICLES
+  EQUIPMENT
+  OTHER
+}
+
+enum MaintenanceStatus {
+  SCHEDULED
+  COMPLETED
+  SKIPPED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum NotificationType {
+  BILL_DUE
+  BILL_OVERDUE
+  SUBSCRIPTION_RENEWAL
+  DOCUMENT_EXPIRING
+  WARRANTY_EXPIRING
+  MAINTENANCE_DUE
+  TASK_DEADLINE
+  WORKSPACE_INVITATION
+  GENERAL
+}
+
+model User {
+  id                       String                  @id @default(uuid())
+  email                    String                  @unique
+  passwordHash             String
+  firstName                String
+  lastName                 String
+  avatarUrl                String?
+  emailVerified            Boolean                 @default(false)
+  emailVerificationToken   String?
+  emailVerificationExpires DateTime?
+  passwordResetToken       String?
+  passwordResetExpires     DateTime?
+  lastLoginAt              DateTime?
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+
+  sessions                 Session[]
+  ownedWorkspaces          Workspace[]             @relation("WorkspaceOwner")
+  memberships              WorkspaceMember[]
+  invitationsSent          WorkspaceInvitation[]   @relation("InvitedBy")
+  assignedBills            Bill[]                  @relation("AssignedBillUser")
+  payments                 PaymentRecord[]         @relation("PaymentActor")
+  uploadedDocuments        Document[]              @relation("DocumentUploader")
+  ownedInventoryItems      InventoryItem[]         @relation("InventoryOwner")
+  assignedTasks            Task[]                  @relation("TaskAssignee")
+  createdTasks             Task[]                  @relation("TaskCreator")
+  taskComments             TaskComment[]
+  notifications            Notification[]
+  notificationPreference   NotificationPreference?
+  activityLogs             ActivityLog[]           @relation("ActivityActor")
+
+  @@index([email])
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  userAgent  String?
+  ipAddress  String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Workspace {
+  id          String        @id @default(uuid())
+  name        String
+  slug        String        @unique
+  type        WorkspaceType @default(PERSONAL)
+  currency    String        @default("USD")
+  ownerId     String
+  owner       User          @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  members             WorkspaceMember[]
+  invitations         WorkspaceInvitation[]
+  bills               Bill[]
+  billOccurrences     BillOccurrence[]
+  paymentRecords      PaymentRecord[]
+  subscriptions       Subscription[]
+  documents           Document[]
+  inventoryItems      InventoryItem[]
+  maintenanceRecords  MaintenanceRecord[]
+  tasks               Task[]
+  notifications       Notification[]
+  activityLogs        ActivityLog[]
+
+  @@index([ownerId])
+  @@index([slug])
+}
+
+model WorkspaceMember {
+  id          String     @id @default(uuid())
+  workspaceId String
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        MemberRole @default(MEMBER)
+  joinedAt    DateTime   @default(now())
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+model WorkspaceInvitation {
+  id          String           @id @default(uuid())
+  workspaceId String
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  email       String
+  role        MemberRole       @default(MEMBER)
+  token       String           @unique
+  status      InvitationStatus @default(PENDING)
+  inviterId   String
+  inviter     User             @relation("InvitedBy", fields: [inviterId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([workspaceId])
+  @@index([email])
+  @@index([token])
+}
+
+model Bill {
+  id                   String         @id @default(uuid())
+  workspaceId          String
+  workspace            Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name                 String
+  description          String?
+  amount               Float
+  currency             String         @default("USD")
+  category             BillCategory   @default(OTHER)
+  recurrence           BillRecurrence @default(ONE_TIME)
+  customIntervalDays   Int?
+  customIntervalMonths Int?
+  dueDate              DateTime
+  status               BillStatus     @default(PENDING)
+  assignedMemberId     String?
+  assignedMember       User?          @relation("AssignedBillUser", fields: [assignedMemberId], references: [id], onDelete: SetNull)
+  reminderDaysBefore   Int            @default(3)
+  notes                String?
+  autoGenerateNext     Boolean        @default(true)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  occurrences          BillOccurrence[]
+  payments             PaymentRecord[]
+  documents            Document[]
+
+  @@index([workspaceId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([category])
+}
+
+model BillOccurrence {
+  id               String      @id @default(uuid())
+  billId           String
+  bill             Bill        @relation(fields: [billId], references: [id], onDelete: Cascade)
+  workspaceId      String
+  workspace        Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  occurrenceNumber Int         @default(1)
+  dueDate          DateTime
+  amount           Float
+  status           BillStatus  @default(PENDING)
+  paidAt           DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  payments         PaymentRecord[]
+
+  @@unique([billId, dueDate])
+  @@index([workspaceId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+model PaymentRecord {
+  id               String          @id @default(uuid())
+  workspaceId      String
+  workspace        Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  billId           String?
+  bill             Bill?           @relation(fields: [billId], references: [id], onDelete: SetNull)
+  billOccurrenceId String?
+  billOccurrence   BillOccurrence? @relation(fields: [billOccurrenceId], references: [id], onDelete: SetNull)
+  amount           Float
+  currency         String          @default("USD")
+  paidAt           DateTime        @default(now())
+  paymentMethod    String          @default("CARD")
+  actorId          String
+  actor            User            @relation("PaymentActor", fields: [actorId], references: [id], onDelete: Cascade)
+  receiptUrl       String?
+  notes            String?
+  isManualRecord   Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([workspaceId])
+  @@index([billId])
+  @@index([actorId])
+  @@index([paidAt])
+}
+
+model Subscription {
+  id                       String             @id @default(uuid())
+  workspaceId              String
+  workspace                Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name                     String
+  provider                 String
+  amount                   Float
+  currency                 String             @default("USD")
+  billingCycle             SubscriptionCycle  @default(MONTHLY)
+  nextRenewalDate          DateTime
+  category                 String             @default("Entertainment")
+  status                   SubscriptionStatus @default(ACTIVE)
+  notes                    String?
+  cancellationUrl          String?
+  cancellationInstructions String?
+  reminderDaysBefore       Int                @default(3)
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+
+  events                   SubscriptionEvent[]
+  documents                Document[]
+
+  @@index([workspaceId])
+  @@index([nextRenewalDate])
+  @@index([status])
+}
+
+model SubscriptionEvent {
+  id             String       @id @default(uuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  eventType      String
+  eventDate      DateTime     @default(now())
+  previousAmount Float?
+  newAmount      Float?
+  notes          String?
+  createdAt      DateTime     @default(now())
+
+  @@index([subscriptionId])
+}
+
+model Document {
+  id                   String           @id @default(uuid())
+  workspaceId          String
+  workspace            Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title                String
+  description          String?
+  category             DocumentCategory @default(OTHER)
+  fileName             String
+  fileOriginalName     String
+  fileKey              String
+  mimeType             String
+  fileSize             Int
+  expirationDate       DateTime?
+  linkedBillId         String?
+  linkedBill           Bill?            @relation(fields: [linkedBillId], references: [id], onDelete: SetNull)
+  linkedInventoryId    String?
+  linkedInventory      InventoryItem?   @relation(fields: [linkedInventoryId], references: [id], onDelete: SetNull)
+  linkedSubscriptionId String?
+  linkedSubscription   Subscription?    @relation(fields: [linkedSubscriptionId], references: [id], onDelete: SetNull)
+  uploadedById         String
+  uploadedBy           User             @relation("DocumentUploader", fields: [uploadedById], references: [id], onDelete: Cascade)
+  notes                String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  tags                 DocumentTag[]
+
+  @@index([workspaceId])
+  @@index([category])
+  @@index([expirationDate])
+}
+
+model DocumentTag {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  name       String
+
+  @@unique([documentId, name])
+  @@index([documentId])
+  @@index([name])
+}
+
+model InventoryItem {
+  id                 String            @id @default(uuid())
+  workspaceId        String
+  workspace          Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name               String
+  description        String?
+  category           InventoryCategory @default(OTHER)
+  purchaseDate       DateTime?
+  purchasePrice      Float?
+  currency           String            @default("USD")
+  warrantyExpiration DateTime?
+  serialNumber       String?
+  location           String?
+  ownerId            String?
+  owner              User?             @relation("InventoryOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  notes              String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  documents          Document[]
+  maintenanceRecords MaintenanceRecord[]
+
+  @@index([workspaceId])
+  @@index([category])
+  @@index([warrantyExpiration])
+}
+
+model MaintenanceRecord {
+  id              String            @id @default(uuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem     @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  workspaceId     String
+  workspace       Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  scheduledDate   DateTime
+  completedDate   DateTime?
+  cost            Float?
+  status          MaintenanceStatus @default(SCHEDULED)
+  performer       String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([inventoryItemId])
+  @@index([workspaceId])
+  @@index([scheduledDate])
+}
+
+model Task {
+  id                 String       @id @default(uuid())
+  workspaceId        String
+  workspace          Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title              String
+  description        String?
+  priority           TaskPriority @default(MEDIUM)
+  status             TaskStatus   @default(TODO)
+  deadline           DateTime?
+  assignedMemberId   String?
+  assignedMember     User?        @relation("TaskAssignee", fields: [assignedMemberId], references: [id], onDelete: SetNull)
+  createdById        String
+  createdBy          User         @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  isRecurring        Boolean      @default(false)
+  recurrenceInterval String?
+  completedAt        DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  comments           TaskComment[]
+
+  @@index([workspaceId])
+  @@index([status])
+  @@index([priority])
+  @@index([deadline])
+}
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+}
+
+model Notification {
+  id               String           @id @default(uuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId      String?
+  workspace        Workspace?       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type             NotificationType @default(GENERAL)
+  title            String
+  message          String
+  entityType       String?
+  entityId         String?
+  read             Boolean          @default(false)
+  readAt           DateTime?
+  deduplicationKey String?          @unique
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+model NotificationPreference {
+  id                      String   @id @default(uuid())
+  userId                  String   @unique
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEnabled            Boolean  @default(true)
+  inAppEnabled            Boolean  @default(true)
+  billDueDays             Int      @default(3)
+  subscriptionRenewalDays Int      @default(3)
+  warrantyExpiringDays    Int      @default(14)
+  documentExpiringDays    Int      @default(14)
+  taskDeadlineDays        Int      @default(1)
+  maintenanceDueDays      Int      @default(3)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model ActivityLog {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actorId     String?
+  actor       User?     @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action      String
+  entity      String
+  entityId    String
+  entityName  String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+  @@index([actorId])
+  @@index([entity])
+  @@index([createdAt])
+}
