@@ -38,6 +38,23 @@ services:
       - key: APP_URL
         value: "http://localhost:5173"
 
+  # Frontend Web Application (React SPA)
+  - type: web
+    name: keepr-frontend
+    runtime: static
+    rootDir: frontend
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://keepr-backend-z3xx.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
 databases:
   # Managed PostgreSQL Database (Free Tier)
   - name: keepr-postgres
