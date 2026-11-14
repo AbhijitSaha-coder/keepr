@@ -39,11 +39,9 @@ services:
         value: "http://localhost:5173"
 
   # Frontend Web Application (React SPA)
-  - type: web
+  - type: static
     name: keepr-frontend
-    runtime: static
     rootDir: frontend
-    plan: free
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
     envVars:
