@@ -55,11 +55,12 @@ jobs:
       - name: Install Frontend Dependencies
         run: cd frontend && npm ci
 
-      - name: Sync Prisma Schema
+      - name: Sync Prisma Schema & Seed Test DB
         run: |
           cd backend
           npx prisma generate
           npx prisma db push
+          npm run prisma:seed
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/keepr_test?schema=public
 
