@@ -4,7 +4,7 @@ services:
     name: keepr-backend
     runtime: node
     rootDir: backend
-    plan: starter
+    plan: free
     region: oregon
     buildCommand: npm ci && npx prisma generate && npm run build
     startCommand: npx prisma db push && node dist/server.js
@@ -18,10 +18,7 @@ services:
           name: keepr-postgres
           property: connectionString
       - key: REDIS_URL
-        fromService:
-          type: redis
-          name: keepr-redis
-          property: connectionString
+        value: redis://127.0.0.1:6379
       - key: JWT_SECRET
         generateValue: true
       - key: STORAGE_SIGNING_SECRET
@@ -33,22 +30,14 @@ services:
       - key: EMAIL_PROVIDER
         value: mock
       - key: CORS_ORIGIN
-        sync: false
+        value: "*"
       - key: APP_URL
-        sync: false
-
-  # Redis Cache & BullMQ Queue
-  - type: redis
-    name: keepr-redis
-    plan: starter
-    region: oregon
-    maxmemoryPolicy: noeviction
-    ipAllowList: []
+        value: "http://localhost:5173"
 
 databases:
-  # Managed PostgreSQL Database
+  # Managed PostgreSQL Database (Free Tier)
   - name: keepr-postgres
-    plan: starter
+    plan: free
     region: oregon
     databaseName: keepr
     user: keepr_user

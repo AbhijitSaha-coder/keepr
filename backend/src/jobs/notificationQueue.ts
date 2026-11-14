@@ -32,6 +32,10 @@ export const notificationQueue = new Queue<NotificationJobData>(NOTIFICATION_QUE
   }
 });
 
+notificationQueue.on('error', (err) => {
+  logger.warn(`BullMQ Queue warning: ${err.message}`);
+});
+
 /**
  * Worker processor that creates the in-app notification idempotently
  * and dispatches email if user preferences allow.
@@ -120,9 +124,31 @@ export function startNotificationWorker(): Worker<NotificationJobData> {
     notificationWorker.on('failed', (job, err) => {
       logger.error(`Job ${job?.id} failed with error:`, err);
     });
+
+    notificationWorker.on('error', (err) => {
+      logger.warn(`BullMQ Worker warning: ${err.message}`);
+    });
   }
 
   return notificationWorker;
+}
+
+/**
+ * Dispatches notification through BullMQ if Redis is ready,
+ * or directly processes it in PostgreSQL/Email as an offline fallback.
+ */
+export async function dispatchNotification(data: NotificationJobData): Promise<void> {
+  try {
+    if (redis.status === 'ready' || redis.status === 'connect') {
+      await notificationQueue.add(`notify-${data.type}-${Date.now()}`, data);
+      return;
+    }
+  } catch (err: any) {
+    logger.debug(`Queue dispatch fallback: ${err.message}`);
+  }
+
+  // Graceful fallback: Process directly via database if Redis queue is offline
+  await processNotificationJob({ data } as any);
 }
 
 export async function stopNotificationWorker(): Promise<void> {

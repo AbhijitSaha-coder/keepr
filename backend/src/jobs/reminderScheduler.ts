@@ -1,6 +1,6 @@
 import { prisma } from '../config/db';
 import { logger } from '../utils/logger';
-import { notificationQueue } from './notificationQueue';
+import { notificationQueue, dispatchNotification } from './notificationQueue';
 import { NotificationType, BillStatus, SubscriptionStatus, TaskStatus, MaintenanceStatus } from '@prisma/client';
 import { format, addDays, isBefore, startOfDay, endOfDay } from 'date-fns';
 
@@ -44,37 +44,29 @@ export async function runReminderCheck(): Promise<{ checked: number; enqueued: n
 
         if (isOverdue) {
           const deduplicationKey = `bill-overdue:${bill.id}:${member.userId}:${dateStr}`;
-          await notificationQueue.add(
-            `bill-overdue-${bill.id}`,
-            {
-              userId: member.userId,
-              workspaceId: bill.workspaceId,
-              type: NotificationType.BILL_OVERDUE,
-              title: `Overdue Bill: ${bill.name}`,
-              message: `The bill "${bill.name}" of ${bill.currency} ${bill.amount.toFixed(2)} was due on ${format(bill.dueDate, 'MMM dd, yyyy')}.`,
-              entityType: 'BILL',
-              entityId: bill.id,
-              deduplicationKey
-            },
-            { jobId: deduplicationKey }
-          );
+          await dispatchNotification({
+            userId: member.userId,
+            workspaceId: bill.workspaceId,
+            type: NotificationType.BILL_OVERDUE,
+            title: `Overdue Bill: ${bill.name}`,
+            message: `The bill "${bill.name}" of ${bill.currency} ${bill.amount.toFixed(2)} was due on ${format(bill.dueDate, 'MMM dd, yyyy')}.`,
+            entityType: 'BILL',
+            entityId: bill.id,
+            deduplicationKey
+          });
           enqueued++;
         } else if (isBefore(bill.dueDate, reminderThreshold) && !isBefore(bill.dueDate, today)) {
           const deduplicationKey = `bill-due:${bill.id}:${member.userId}:${format(bill.dueDate, 'yyyy-MM-dd')}`;
-          await notificationQueue.add(
-            `bill-due-${bill.id}`,
-            {
-              userId: member.userId,
-              workspaceId: bill.workspaceId,
-              type: NotificationType.BILL_DUE,
-              title: `Upcoming Bill Due: ${bill.name}`,
-              message: `Reminder: "${bill.name}" of ${bill.currency} ${bill.amount.toFixed(2)} is due on ${format(bill.dueDate, 'MMM dd, yyyy')}.`,
-              entityType: 'BILL',
-              entityId: bill.id,
-              deduplicationKey
-            },
-            { jobId: deduplicationKey }
-          );
+          await dispatchNotification({
+            userId: member.userId,
+            workspaceId: bill.workspaceId,
+            type: NotificationType.BILL_DUE,
+            title: `Upcoming Bill Due: ${bill.name}`,
+            message: `Reminder: "${bill.name}" of ${bill.currency} ${bill.amount.toFixed(2)} is due on ${format(bill.dueDate, 'MMM dd, yyyy')}.`,
+            entityType: 'BILL',
+            entityId: bill.id,
+            deduplicationKey
+          });
           enqueued++;
         }
       }
@@ -101,20 +93,16 @@ export async function runReminderCheck(): Promise<{ checked: number; enqueued: n
 
         if (isBefore(sub.nextRenewalDate, reminderThreshold) && !isBefore(sub.nextRenewalDate, today)) {
           const deduplicationKey = `sub-renewal:${sub.id}:${member.userId}:${format(sub.nextRenewalDate, 'yyyy-MM-dd')}`;
-          await notificationQueue.add(
-            `sub-renewal-${sub.id}`,
-            {
-              userId: member.userId,
-              workspaceId: sub.workspaceId,
-              type: NotificationType.SUBSCRIPTION_RENEWAL,
-              title: `Subscription Renewal: ${sub.name}`,
-              message: `Your subscription to ${sub.provider || sub.name} (${sub.currency} ${sub.amount.toFixed(2)}) renews on ${format(sub.nextRenewalDate, 'MMM dd, yyyy')}.`,
-              entityType: 'SUBSCRIPTION',
-              entityId: sub.id,
-              deduplicationKey
-            },
-            { jobId: deduplicationKey }
-          );
+          await dispatchNotification({
+            userId: member.userId,
+            workspaceId: sub.workspaceId,
+            type: NotificationType.SUBSCRIPTION_RENEWAL,
+            title: `Subscription Renewal: ${sub.name}`,
+            message: `Your subscription to ${sub.provider || sub.name} (${sub.currency} ${sub.amount.toFixed(2)}) renews on ${format(sub.nextRenewalDate, 'MMM dd, yyyy')}.`,
+            entityType: 'SUBSCRIPTION',
+            entityId: sub.id,
+            deduplicationKey
+          });
           enqueued++;
         }
       }
@@ -145,20 +133,16 @@ export async function runReminderCheck(): Promise<{ checked: number; enqueued: n
         const prefDays = member.user.notificationPreference?.documentExpiringDays ?? 14;
         if (isBefore(doc.expirationDate, addDays(today, prefDays))) {
           const deduplicationKey = `doc-exp:${doc.id}:${member.userId}:${format(doc.expirationDate, 'yyyy-MM-dd')}`;
-          await notificationQueue.add(
-            `doc-exp-${doc.id}`,
-            {
-              userId: member.userId,
-              workspaceId: doc.workspaceId,
-              type: NotificationType.DOCUMENT_EXPIRING,
-              title: `Document Expiring Soon: ${doc.title}`,
-              message: `Your document "${doc.title}" expires on ${format(doc.expirationDate, 'MMM dd, yyyy')}.`,
-              entityType: 'DOCUMENT',
-              entityId: doc.id,
-              deduplicationKey
-            },
-            { jobId: deduplicationKey }
-          );
+          await dispatchNotification({
+            userId: member.userId,
+            workspaceId: doc.workspaceId,
+            type: NotificationType.DOCUMENT_EXPIRING,
+            title: `Document Expiring Soon: ${doc.title}`,
+            message: `Your document "${doc.title}" expires on ${format(doc.expirationDate, 'MMM dd, yyyy')}.`,
+            entityType: 'DOCUMENT',
+            entityId: doc.id,
+            deduplicationKey
+          });
           enqueued++;
         }
       }
@@ -189,20 +173,16 @@ export async function runReminderCheck(): Promise<{ checked: number; enqueued: n
         const prefDays = member.user.notificationPreference?.warrantyExpiringDays ?? 14;
         if (isBefore(item.warrantyExpiration, addDays(today, prefDays))) {
           const deduplicationKey = `warranty-exp:${item.id}:${member.userId}:${format(item.warrantyExpiration, 'yyyy-MM-dd')}`;
-          await notificationQueue.add(
-            `warranty-exp-${item.id}`,
-            {
-              userId: member.userId,
-              workspaceId: item.workspaceId,
-              type: NotificationType.WARRANTY_EXPIRING,
-              title: `Warranty Expiring: ${item.name}`,
-              message: `The warranty for ${item.name} expires on ${format(item.warrantyExpiration, 'MMM dd, yyyy')}.`,
-              entityType: 'INVENTORY',
-              entityId: item.id,
-              deduplicationKey
-            },
-            { jobId: deduplicationKey }
-          );
+          await dispatchNotification({
+            userId: member.userId,
+            workspaceId: item.workspaceId,
+            type: NotificationType.WARRANTY_EXPIRING,
+            title: `Warranty Expiring: ${item.name}`,
+            message: `The warranty for ${item.name} expires on ${format(item.warrantyExpiration, 'MMM dd, yyyy')}.`,
+            entityType: 'INVENTORY',
+            entityId: item.id,
+            deduplicationKey
+          });
           enqueued++;
         }
       }
@@ -234,20 +214,16 @@ export async function runReminderCheck(): Promise<{ checked: number; enqueued: n
         const prefDays = member.user.notificationPreference?.maintenanceDueDays ?? 3;
         if (isBefore(maint.scheduledDate, addDays(today, prefDays))) {
           const deduplicationKey = `maint-due:${maint.id}:${member.userId}:${format(maint.scheduledDate, 'yyyy-MM-dd')}`;
-          await notificationQueue.add(
-            `maint-due-${maint.id}`,
-            {
-              userId: member.userId,
-              workspaceId: maint.workspaceId,
-              type: NotificationType.MAINTENANCE_DUE,
-              title: `Scheduled Maintenance: ${maint.title}`,
-              message: `Maintenance for ${maint.inventoryItem.name} ("${maint.title}") is scheduled for ${format(maint.scheduledDate, 'MMM dd, yyyy')}.`,
-              entityType: 'INVENTORY',
-              entityId: maint.inventoryItemId,
-              deduplicationKey
-            },
-            { jobId: deduplicationKey }
-          );
+          await dispatchNotification({
+            userId: member.userId,
+            workspaceId: maint.workspaceId,
+            type: NotificationType.MAINTENANCE_DUE,
+            title: `Scheduled Maintenance: ${maint.title}`,
+            message: `Maintenance for ${maint.inventoryItem.name} ("${maint.title}") is scheduled for ${format(maint.scheduledDate, 'MMM dd, yyyy')}.`,
+            entityType: 'INVENTORY',
+            entityId: maint.inventoryItemId,
+            deduplicationKey
+          });
           enqueued++;
         }
       }
@@ -282,20 +258,16 @@ export async function runReminderCheck(): Promise<{ checked: number; enqueued: n
 
       for (const member of targetMembers) {
         const deduplicationKey = `task-deadline:${task.id}:${member.userId}:${format(task.deadline, 'yyyy-MM-dd')}`;
-        await notificationQueue.add(
-          `task-deadline-${task.id}`,
-          {
-            userId: member.userId,
-            workspaceId: task.workspaceId,
-            type: NotificationType.TASK_DEADLINE,
-            title: `Task Deadline: ${task.title}`,
-            message: `Task "${task.title}" is due on ${format(task.deadline, 'MMM dd, yyyy')}.`,
-            entityType: 'TASK',
-            entityId: task.id,
-            deduplicationKey
-          },
-          { jobId: deduplicationKey }
-        );
+        await dispatchNotification({
+          userId: member.userId,
+          workspaceId: task.workspaceId,
+          type: NotificationType.TASK_DEADLINE,
+          title: `Task Deadline: ${task.title}`,
+          message: `Task "${task.title}" is due on ${format(task.deadline, 'MMM dd, yyyy')}.`,
+          entityType: 'TASK',
+          entityId: task.id,
+          deduplicationKey
+        });
         enqueued++;
       }
     }

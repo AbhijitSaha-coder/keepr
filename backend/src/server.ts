@@ -15,8 +15,12 @@ async function bootstrap() {
     logger.info('✅ PostgreSQL Database connected successfully');
 
     // 2. Start Background Worker
-    startNotificationWorker();
-    logger.info('✅ BullMQ Notification Worker started');
+    try {
+      startNotificationWorker();
+      logger.info('✅ BullMQ Notification Worker started');
+    } catch (err: any) {
+      logger.warn(`BullMQ Notification Worker initialization deferred: ${err.message}`);
+    }
 
     // 3. Initial check and periodic reminder schedule (every 1 hour)
     runReminderCheck().catch((err) => logger.error('Initial reminder check error:', err));
